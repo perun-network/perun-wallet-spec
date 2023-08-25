@@ -9,15 +9,68 @@ Any wallet wanting to integrate Perun channels should be able to rely on a
 set specification describing **how** to interact with a Perun wallet backend.
 The architecture is as follows:
 
+### Channel-Wallet-Backend-Service
+* How is it started?
+  * Similar to Perun-CKB-Demo
+  * Pubkey + Identifier:
+    * Register while running
+    * "List of demo-clients"
+
+### Opening a channel
+* Identify other channel users:
+  * UserA knows identifier of UserB
+  * A POV :=> Only knows identifier, wants to open channel
+  * Backend POV :=> Receives identifier, somehow resolves to UserB
+                    backend and opens.
+  - Backend needs some kind of identifier resolving
+  - Identifier { on-chain } -> Use LibP2P
+    - Identifier implements `go-perun.wire.Address`
+    - Relay, which is using some Resolver
+    - Resolver can be either on-chain or off-chain server
+    - on-chain: Address-book
+
+* Opening a channel:
+  * `OpenChannel(wire.Address, assets) -> (channelHandle)`
+
+### Handling requests issued from wallet-service
+* Service receives update event => Forwards to front-end
+  - Front-end queries user event update agreement
+* Service accepts/declines update depending on user decision
+  - Accept :=> Service queries front-end for signature on new state
+  - Decline :=> Wallet declines
+* Signature Requests are decoupled from rest of workflow
+
+### Signing & Sending on-chain transactions
+* Service queries Wallet for assets to use.
+* A: Service receives signed tx and sends itself
+* B: Wallet sends signed tx and forwards necessary info to service
+
+### go-perun/wallet-interface
+* Neuron-Wallet:
+  * Prompts users for signature requests
+  * `func (a Account) SignData(data SignMessageMsg) ([]byte, error)`
+  * `SignMessageMsg.Data.Display()` available to show front-end users what they are signing.
+
+* Channel-Wallet-Service:
+  * `VerifySignature(msg []byte, sig wallet.Sig, a wallet.Address) (bool, error)`
+  * SignData calls back into (Neuron) wallet.
+
+```
+  .----------------.
+  | Relay .----------.     .--- [on-chain address book]
+  |       | Resolver |====-|
+  |       ^----------^     ^--- [some off-chain storage]
+  ^----------------^
+```
+
 ## Architecture
 
 ```
-
                                         .------------------------------.
                                         |                       Wallet |
-.----------------------.           .------------------------.          |
-| Perun-Wallet-Backend | <- API -> | Perun-Language-Adapter |          |
-^----------------------^           ^------------------------^          |
+.------------------------.           .------------------------.        |
+| Channel-Wallet-Service | <- API -> | Perun-Language-Adapter |        |
+^------------------------^           ^------------------------^        |
                                         |                              |
                                         ^------------------------------^
 ```
@@ -25,261 +78,6 @@ The architecture is as follows:
 This specification defines the raw messages exposed via a
 `Perun-Language-Adapter`. Any adapter that is implemented is expected to fulfill
 this specification to allow any integrator to work against a uniform interface.
-
-## Encoding
-
-Messages are encoded using `protobuf`.
-
-```
-// Copyright 2022 - See NOTICE file for copyright holders.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//   http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-// This file contains protocol buffer definitions for perun wire messages.
-
-syntax = "proto3";
-
-package perunwire;
-
-option go_package = "perun.network/go-perun/wire/protobuf";
-
-// Envelope encapsulates a message with the routing information. That is the
-// the sender and the intended receiver.
-message Envelope {
-  // sender of the message.
-  bytes sender = 1;
-  // intended recipient of the message.
-  bytes recipient = 2;
-  // msg should contain on the valid message types.
-  oneof msg {
-    PingMsg ping_msg = 3;
-    PongMsg pong_msg = 4;
-    ShutdownMsg shutdown_msg = 5;
-    AuthResponseMsg auth_response_msg = 6;
-    LedgerChannelProposalMsg ledger_channel_proposal_msg = 7;
-    LedgerChannelProposalAccMsg ledger_channel_proposal_acc_msg = 8;
-    SubChannelProposalMsg sub_channel_proposal_msg = 9;
-    SubChannelProposalAccMsg sub_channel_proposal_acc_msg = 10;
-    VirtualChannelProposalMsg virtual_channel_proposal_msg = 11;
-    VirtualChannelProposalAccMsg virtual_channel_proposal_acc_msg = 12;
-    ChannelProposalRejMsg channel_proposal_rej_msg = 13;
-    ChannelUpdateMsg channel_update_msg = 14;
-    VirtualChannelFundingProposalMsg virtual_channel_funding_proposal_msg = 15;
-    VirtualChannelSettlementProposalMsg  virtual_channel_settlement_proposal_msg = 16; 
-    ChannelUpdateAccMsg channel_update_acc_msg = 17;
-    ChannelUpdateRejMsg channel_update_rej_msg = 18;
-    ChannelSyncMsg channel_sync_msg = 19;
-  }
-}
-
-// Balance represents the balance of a single asset, for all the channel
-// participants.
-message Balance {
-  repeated bytes balance = 1;
-}
-
-// Balances represents the balance of all the assets, for all the channel
-// participants.
-message Balances {
-  repeated Balance balances = 1;
-}
-
-// IndexMap represents the mapping of a participant indices in a sub allocation
-// or a virtual channel funding proposal to the corresponding indices in the
-// parent channel.
-message IndexMap {
-  repeated uint32 index_map = 1;
-}
-
-// SubAlloc represts a sub allocation.
-message SubAlloc {
-  bytes id = 1;
-  Balance bals = 2;
-  IndexMap index_map = 3;
-}
-
-// Allocation represents channel.Allocation.
-message Allocation {
-  repeated bytes assets = 1;
-  Balances balances = 2;
-  repeated SubAlloc locked = 3;
-}
-
-// BaseChannelProposal represents client.BaseChannelProposal.
-message BaseChannelProposal {
-  bytes proposal_id = 1;
-  uint64 challenge_duration = 2;
-  bytes nonce_share = 3;
-  bytes app = 4;
-  bytes init_data = 5;
-  Allocation init_bals = 6;
-  Balances funding_agreement = 7;
-}
-
-// BaseChannelProposalAcc represents client.BaseChannelProposalAcc.
-message BaseChannelProposalAcc {
-  bytes proposal_id = 1;
-  bytes nonce_share = 2;
-}
-
-// Params represents channel.Params.
-message Params {
-  bytes id = 1;
-  uint64 challenge_duration = 2;
-  repeated bytes parts = 3;
-  bytes app = 4;
-  bytes nonce = 5;
-  bool ledger_channel = 6;
-  bool virtual_channel = 7;
-}
-
-// State represents channel.State.
-message State {
-  bytes id = 1;
-  uint64 version = 2;
-  bytes app = 3;
-  Allocation allocation = 4;
-  bytes data = 5;
-  bool is_final = 6;
-}
-
-// Transaction represents channel.Transaction.
-message Transaction {
-  State state = 1;
-  repeated bytes sigs = 2;
-}
-
-// SignedState represents channel.SignedState.
-message SignedState {
-  Params params = 1;
-  State  state = 2;
-  repeated bytes sigs = 3;
-}
-
-// ChannelUpdate represents channel.ChannelUpdate.
-message ChannelUpdate {
-  State state = 1;
-  uint32 actor_idx = 2;
-}
-
-// PingMsg represents wire.PingMsg.
-message PingMsg {
-  int64 created = 1;
-}
-
-// PongMsg represents wire.PongMsg.
-message PongMsg {
-  int64 created = 1;
-}
-
-// ShutdownMsg represents wire.ShutdownMsg.
-message ShutdownMsg {
-  string reason = 1;
-}
-
-// AuthResponseMsg represents wire.AuthResponseMsg.
-message AuthResponseMsg {
-}
-
-// LedgerChannelProposalMsg represents client.LedgerChannelProposalMsg.
-message LedgerChannelProposalMsg {
-  BaseChannelProposal base_channel_proposal = 1;
-  bytes participant = 2;
-  repeated bytes peers = 3;
-}
-
-// LedgerChannelProposalAccMsg represents client.LedgerChannelProposalAccMsg.
-message LedgerChannelProposalAccMsg {
-  BaseChannelProposalAcc base_channel_proposal_acc = 1;
-  bytes participant = 2;
-}
-
-// SubChannelProposalMsg represents client.SubChannelProposalMsg.
-message SubChannelProposalMsg {
-  BaseChannelProposal base_channel_proposal = 1;
-  bytes parent = 2;
-}
-
-// SubChannelProposalAccMsg represents client.SubChannelProposalAccMsg.
-message SubChannelProposalAccMsg {
-  BaseChannelProposalAcc base_channel_proposal_acc = 1;
-}
-
-// VirtualChannelProposalMsg represents client.VirtualChannelProposalMsg.
-message VirtualChannelProposalMsg {
-  BaseChannelProposal base_channel_proposal = 1;
-  bytes proposer = 2;
-  repeated bytes peers = 3;
-  repeated bytes parents = 4;
-  repeated IndexMap index_maps = 5;
-}
-
-// VirtualChannelProposalAccMsg represents client.VirtualChannelProposalAccMsg.
-message VirtualChannelProposalAccMsg {
-  BaseChannelProposalAcc base_channel_proposal_acc = 1;
-  bytes responder = 2;
-}
-
-// ChannelProposalRejMsg represents client.ChannelProposalRejMsg.
-message ChannelProposalRejMsg {
-  bytes proposal_id = 1;
-  string reason = 2;
-}
-
-// ChannelUpdateMsg represents client.ChannelUpdateMsg.
-message ChannelUpdateMsg {
-  ChannelUpdate channel_update = 1;
-  bytes sig = 2;
-}
-
-
-// VirtualChannelFundingProposalMsg represents
-// client.VirtualChannelFundingProposalMsg.
-message VirtualChannelFundingProposalMsg {
-  ChannelUpdateMsg channel_update_msg = 1;
-  SignedState initial = 2;
-  IndexMap index_map = 3;
-}
-
-// VirtualChannelSettlementProposalMsg represents
-// client.VirtualChannelSettlementProposalMsg.
-message VirtualChannelSettlementProposalMsg {
-  ChannelUpdateMsg channel_update_msg = 1;
-  SignedState final = 2;
-}
-
-// ChannelUpdateAccMsg represents client.ChannelUpdateAccMsg.
-message ChannelUpdateAccMsg {
-  bytes channel_id = 1;
-  uint64 version = 2;
-  bytes sig = 3;
-}
-
-// ChannelUpdateRejMsg represents client.ChannelUpdateRejMsg.
-message ChannelUpdateRejMsg {
-  bytes channel_id = 1;
-  uint64 version = 2;
-  string reason = 3;
-}
-
-// ChannelSyncMsg represents client.ChannelSyncMsg.
-message ChannelSyncMsg {
-  uint32 phase = 1;
-  Transaction current_tx = 2;
-}
-```
-
-TODO: Define protobuf messages for gRPC calls calling channel actions etc.
 
 ## Communication
 
