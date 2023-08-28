@@ -65,28 +65,11 @@ The architecture is as follows:
 
 ## Architecture
 
-```
-                                        .------------------------------.
-                                        |                       Wallet |
-.------------------------.           .------------------------.        |
-| Channel-Wallet-Service | <- API -> | Perun-Language-Adapter |        |
-^------------------------^           ^------------------------^        |
-                                        |                              |
-                                        ^------------------------------^
-```
-
-This specification defines the raw messages exposed via a
-`Perun-Language-Adapter`. Any adapter that is implemented is expected to fulfill
-this specification to allow any integrator to work against a uniform interface.
+![architecture](./resources/spec-architecture.jpg)
 
 ## Communication
 
-Communication with the Perun wallet backend uses gRPC.
+The communication between the channel service and the wallet integrating Perun
+channels is defined in the following sequence diagram.
 
-TODO: Define gRPC endpoints using protobuf.
-
-```
-service WalletService {
-  rpc OpenChannel(ChannelOpenRequest) returns (ChannelOpenResponse);
-}
-```
+![sequence-diagram](./resources/spec-sequence.jpg)

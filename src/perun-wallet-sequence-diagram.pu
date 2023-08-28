@@ -1,0 +1,135 @@
+@startuml
+actor Alice as A
+entity "Wallet Alice" as WA
+entity "Channel Service Alice" as CSA
+entity "Payment Channel" as PC
+entity "Channel Service Bob" as CSB
+entity "Wallet Bob" as WB
+actor Bob as B
+
+== Open Channel ==
+A -> WA : request open channel
+WA -> CSA : rpc call OpenChannel()
+CSA -> CSB : publish OpenChannel request
+CSB -> WB : rpc call ForwardOpenChannelRequest
+WB -> B : Request open channel acceptance/declination
+alt on channel open acceptance
+B -> WB : Accept open channel request
+WB -> CSB : rpc call OpenChannel()
+CSB -> CSA : publish open channel acceptance
+CSA -> PC : Open Channel
+activate PC #yellow
+note over PC: Channel is established
+deactivate PC
+else on channel open declination
+B -> WB : Decline open channel request
+WB -> CSB : rpc call OpenChannel() w/ Declination
+CSB -> CSA : publish OpenChannel declination
+end
+
+== Channel State Update ==
+
+A -> WA : update channel state
+WA -> CSA : rpc call UpdateChannel()
+CSA --> CSB : publish update request
+CSB -> WB : forward update request
+WB -> B : prompt for update agreement
+
+alt on channel update acceptance
+B -> WB : accept update
+WB -> CSB : forward update acceptance/declination
+CSB -> WB : rpc call SignChannelUpdate()
+WB -> B : request signature on channel state
+B -> WB : accept/decline signature request
+alt on signature acceptance
+WB -> CSB : forward signed channel state
+CSB -> CSA : publish successful channel state update
+else on signature declination
+WB -> CSB : forward signature declination
+end
+else on channel update declination
+WB -> CSB : forward update declination
+CSB -> CSB : Abort channel update
+end
+
+== Channel Close ==
+[-> PC : Running channel
+activate PC #yellow
+A -> WA : Request channel Close
+WA -> CSA : rpc call CloseChannel()
+CSA -> CSB : publish channel close request
+CSB -> WB : rpc call CloseChannelRequest()
+WB -> B : request close request acceptance/declination
+alt on channel close acceptance
+B -> WB : accept channel close
+WB -> CSB : forward channel close acceptance
+CSB -> WB : rpc call SignRequest()
+WB -> B : request signature on channel close
+alt on signature request acceptance
+B -> WB : sign channel close
+WB -> CSB : return signed channel close
+CSB -> CSA : publish successful channel close
+deactivate PC
+else on signature request declination
+B -> WB : decline signature request
+WB -> CSB : rpc call ChannelClose w/ declination
+note across: "Enter <Channel Force Close> sequence diagram entry"
+end
+else on channel close declination
+note across: "Enter <Channel Force Close> sequence diagram entry"
+end
+
+== Force Close Channel ==
+[-> PC: Running channel
+activate PC #yellow
+CSA -> CSA : Timeout channel action
+CSA -> WA : rpc call SignRequest() w/ force close channel
+WA -> A : request signature on force close channel
+alt on signature request acceptance
+A -> WA : sign channel force close
+WA -> CSA : rpc call ForceCloseChannel()
+CSA -> PC : publish force close channel
+alt ForceClose with latest channel state
+CSB -> WB : rpc call ForceCloseEvent()
+WB -> WB : No challenge possible
+note over PC
+The force close issued was using the latest channel state, Bob can do nothing in this case.
+end note
+deactivate PC
+else ForceClose with channel state older than latest state
+[-> PC: Running channel
+activate PC #yellow
+CSB -> WB : rpc call ForceCloseEvent()
+WB -> B : forward force close event, ask for challenge with latest state
+alt Bob wants to challenge ForceClose with his latest state
+B -> WB : challenge using latest state
+WB -> CSB : rpc call Challenge()
+CSB -> PC : publish challenge
+note over PC
+Alice would be able to counter challenge if she has a state with a higher version number
+than what Bob used to challenged. We assume the latest state is now reached.
+The channel is thus closed.
+end note
+deactivate PC
+else Bob does not want to challenge ForceClose
+[-> PC: Running channel
+activate PC #yellow
+B -> WB : decline challenge request
+WB -> CSB : rpc call Challenge() w/ declination
+note over PC
+The channel is closed with Alice's ForceClose state.
+end note
+deactivate PC
+end
+else on signature request declination
+[-> PC : Running channel
+activate PC #yellow
+WA -> CSA : forward signature declination
+CSA -> CSA : abort force close
+note over PC
+Alice declined the signature request. The payment channel stays established until one of the parties
+does an action.
+end note
+end
+deactivate PC
+@enduml
