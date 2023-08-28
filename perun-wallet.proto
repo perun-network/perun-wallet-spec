@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+// ChannelService running as a background worker providing core functionality
+// to interact with Perun channels.
+service ChannelService {
+  rpc OpenChannel(ChannelOpenRequest) returns (ChannelOpenResponse);
+  rpc UpdateChannel(ChannelUpdateRequest) returns (ChannelUpdateResponse);
+  rpc CloseChannel(ChannelCloseRequest) returns (ChannelCloseResponse);
+  rpc ForceCloseChannel(ChannelForceCloseRequest) returns (ChannelForceCloseResponse);
+}
+
+message ChannelOpenRequest {
+}
+
+message ChannelOpenResponse {
+}
+
+message ChannelUpdateRequest {
+}
+
+message ChannelUpdateResponse {
+}
+
+message ChannelCloseRequest {
+}
+
+message ChannelCloseResponse {
+}
+
+message ChannelForceCloseRequest {
+}
+
+message ChannelForceCloseResponse {
+}
+
+// WalletService is the wallet which integrates PerunChannels. It has to
+// provide an interface which can be called by the `ChannelService` if channel
+// updates happen and require user interaction.
+service WalletService {
+  // Send a channel update request containing the proposed/new channel state to
+  // be shown in the front-end. The wallet might use this update event to query
+  // the user whether or not to accept the channel update. This would in turn
+  // lead to a call to `UpdateChannel` from WalletService -> ChannelService
+  // with the updated channel state.
+  rpc SendUpdateEvent(UpdateEventRequest) returns google.protobuf.Empty;
+  // Request a signature on the given message by some wallet.
+  rpc SignMessage(SignMessageRequest) returns SignMessageResponse;
+}
+
+message UpdateEventRequest {
+}
+
+message UpdateEventResponse {
+}
+
+message SignMessageRequest {
+}
+
+message SignMessageResponse {
+}
