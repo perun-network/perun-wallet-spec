@@ -10,6 +10,7 @@ actor Bob as B
 == Open Channel ==
 A -> WA : request open channel
 WA -> CSA : rpc call OpenChannel()
+activate CSA #green
 CSA -> CSB : publish OpenChannel request
 CSB -> WB : rpc call ForwardOpenChannelRequest
 WB -> B : Request open channel acceptance/declination
@@ -18,6 +19,8 @@ B -> WB : Accept open channel request
 WB -> CSB : rpc call OpenChannel()
 CSB -> CSA : publish open channel acceptance
 CSA -> PC : Open Channel
+CSA -> WA : return
+deactivate CSA
 activate PC #yellow
 note over PC: Channel is established
 deactivate PC

@@ -1,0 +1,66 @@
+@startuml
+[Channel Service] as CS
+note bottom of CS
+A background service handling all of Peruns
+core logic and exposing a suitable interface
+for integration in wallets.
+end note
+
+component Wallet as W {
+    component Perun-Channel-Component {
+    component CSA
+    component WCBH
+    }
+}
+
+() "Wallet API" as WAPI
+
+() "Channel Service API" as CSAPI
+
+[Channel Service Adapter] as CSA
+note right of CSA
+Channel Service Adapter is a language specific
+wrapper implementation allowing to interface
+with the Channel Service API.
+Used by the wallet to expose channel functionality
+to the user.
+end note
+
+[Wallet Callback Handler] as WCBH
+
+[Relay] as R
+note top of R
+Responsible for resolving Peer identifiers
+to on-chain addresses and/or alias names.
+Used by the Channel Service to establish
+connections to other peers.
+end note
+
+database AddressBook as AB {
+    database onchain
+    database offchain
+}
+
+note bottom of AB
+The AddressBook is some queryable storage
+allowing the relay to match common peer identifiers
+with their respective on-chain address.
+end note
+
+R -down-> AB : looks up via
+
+CS -right-> CSAPI : implements
+CS .-up- WAPI : uses
+
+CS .-left-> R : uses
+
+
+note top of WCBH
+Implements the Wallet API which is used by
+the Channel Service to forward events to the Wallet.
+end note
+
+WCBH -down- WAPI : implements
+CSA .-right-> CSAPI : uses
+
+@enduml
