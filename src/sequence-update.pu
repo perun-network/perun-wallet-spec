@@ -1,0 +1,76 @@
+@startuml
+actor Alice as A
+entity "Wallet Alice" as WA
+entity "Channel Service Alice" as CSA
+entity "Payment Channel" as PC
+entity "Channel Service Bob" as CSB
+entity "Wallet Bob" as WB
+actor Bob as B
+
+title Update Channel
+
+[-\\ "alive signal"
+activate PC #yellow
+A -> WA : update channel state
+activate WA #pink
+WA -> CSA : rpc call UpdateChannel()
+activate CSA #lightgreen
+CSA --> CSB : publish update request
+activate CSB #lightgreen
+CSB -> WB : forward update request
+activate WB #pink
+WB -> B : prompt for update agreement
+
+alt#gold #lightblue on channel update acceptance
+  B -> WB : accept update
+  WB -> CSB : forward update acceptance/declination
+  CSB -> WB : rpc call SignChannelUpdate()
+  activate WB #mediumorchid
+  WB -> B : request signature on channel state
+  B -> WB : accept/decline signature request
+  alt#lightyellow #technology  on signature acceptance
+    WB -> CSB : return signed channel state
+    deactivate WB
+    deactivate WB
+    CSB -> CSA : publish successful channel state update
+    deactivate CSB
+    CSA -> WA : return successful channel state update
+    deactivate CSA
+    WA -> A : notify successful channel state update
+    deactivate WA
+  else #salmon on signature declination
+    [-\\ "alive signal"
+    activate WB #pink
+    activate WB #mediumorchid
+    activate WA #pink
+    activate CSB #lightgreen
+    activate CSA #lightgreen
+    WB -> CSB : return signature declination
+    deactivate WB
+    CSB -> CSA : publish no update agreement
+    deactivate CSB
+    deactivate WB
+    CSA -> WA : return unsuccessful channel state update
+    deactivate CSA
+    WA -> A : notify unsuccessful channel state update
+    deactivate WA
+  end
+else #salmon on channel update declination
+  [-\\ "alive signal"
+  activate WB #pink
+  activate WA #pink
+  activate CSB #lightgreen
+  activate CSA #lightgreen
+  WB -> CSB : forward update declination
+  deactivate WB
+  CSB -> CSA : publish no update agreement
+  deactivate CSB
+  CSA -> WA : return unsuccessful channel state update
+  deactivate CSA
+  WA -> A : notify unsuccessful channel state update
+  deactivate WA
+end
+deactivate PC
+
+
+@enduml

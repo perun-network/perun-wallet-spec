@@ -1,0 +1,88 @@
+@startuml
+actor Alice as A
+entity "Wallet Alice" as WA
+entity "Channel Service Alice" as CSA
+entity "Payment Channel" as PC
+entity "Channel Service Bob" as CSB
+entity "Wallet Bob" as WB
+actor Bob as B
+
+title Close Channel
+
+[-\\ "alive signal"
+activate PC #yellow
+A -> WA : Request channel Close
+activate WA #pink
+WA -> CSA : rpc call CloseChannel()
+activate CSA #lightgreen
+CSA -> CSB : publish channel close request
+activate CSB #lightgreen
+CSB -> WB : rpc call CloseChannelRequest()
+activate WB #pink
+activate WB #mediumorchid
+WB -> B : request close request acceptance/declination
+alt#gold #lightblue on channel close acceptance
+  B -> WB : accept channel close
+  WB -> CSB : return channel close acceptance
+  deactivate WB
+  CSB -> WB : rpc call SignRequest()
+  activate WB #mediumorchid
+  WB -> B : request signature on channel close
+  alt#lightyellow #technology  on signature request acceptance
+    B -> WB : sign channel close
+    WB -> CSB : return signed channel close
+    deactivate WB
+    deactivate WB
+    CSB -> CSA : publish successful channel close
+    deactivate CSB
+    CSA -> WA : return successful channel close
+    deactivate CSA
+    WA -> A : notify successful channel close
+    deactivate WA
+    note over PC: "Successfully closed channel"
+    destroy PC
+  else #salmon on signature request declination
+    [-\\ "alive signal"
+    activate WB #pink
+    activate WB #mediumorchid
+    activate CSB #lightgreen
+    activate WA #pink
+    activate CSA #lightgreen
+    activate PC #yellow
+    B -> WB : decline signature request
+    WB -> CSB : rpc call ChannelClose w/ declination
+    activate CSB #darkgreen
+    deactivate WB
+    CSB -> CSA : publish unsuccessful channel close
+    CSB -> WB : return
+    deactivate CSB
+    deactivate CSB
+    deactivate WB
+    CSA -> WA : return unsuccessful channel close
+    deactivate CSA
+    WA -> A : notify unsuccessful channel close
+    deactivate WA
+    note across: "Enter <Channel Force Close> sequence diagram entry"
+  end
+else #salmon on channel close declination
+  [-\\ "alive signal"
+  activate WB #pink
+  activate WB #mediumorchid
+  activate CSB #lightgreen
+  activate WA #pink
+  activate CSA #lightgreen
+  WB -> CSB : forward channel close declination
+  deactivate WB
+  deactivate WB
+  CSB -> CSA : publish unsuccessful channel close
+  deactivate CSB
+  CSA -> WA : return unsuccessful channel close
+  deactivate CSA
+  WA -> A : notify unsuccessful channel close
+  deactivate WA
+  note across: "Enter <Channel Force Close> sequence diagram entry"
+end
+deactivate PC
+
+
+@enduml
