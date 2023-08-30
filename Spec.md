@@ -72,4 +72,14 @@ The architecture is as follows:
 The communication between the channel service and the wallet integrating Perun
 channels is defined in the following sequence diagram.
 
-![sequence-diagram](./resources/spec-sequence.jpg)
+### Opening a channel
+![open](./resources/sequence-open.png)
+
+### Updating a channel
+![update](./resources/sequence-update.png)
+
+### Closing a channel
+![close](./resources/sequence-close.png)
+
+### Force closing a channel
+![force-close](./resources/sequence-force-close.png)
