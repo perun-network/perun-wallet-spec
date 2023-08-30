@@ -84,9 +84,9 @@ alt#gold #lightblue on signature request acceptance
       B -> WB : decline challenge request
       WB -> CSB : rpc call Challenge() w/ declination
       activate CSB #darkgreen
-      deactivate WB
       CSB -> CSB : no challenge to issue
       CSB -> WB : return
+      deactivate WB
       deactivate CSB
       deactivate CSB
       ...challenge timeout passed...
