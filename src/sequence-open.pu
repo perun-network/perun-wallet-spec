@@ -15,15 +15,20 @@ WA -> CSA : rpc call OpenChannel()
 activate CSA #lightgreen
 CSA -> CSB : publish OpenChannel request
 activate CSB #lightgreen
-CSB -> WB : rpc call ForwardOpenChannelRequest
+CSB -> WB : rpc call OpenChannelRequest
 activate WB #pink
+activate WB #mediumorchid
 WB -> B : Request open channel acceptance/declination
+WB -> CSB : return
+deactivate WB
 alt#gold #lightblue on channel open acceptance
   B -> WB : Accept open channel request
   WB -> CSB : rpc call OpenChannel()
   activate CSB #darkgreen
   CSB -> CSA : publish open channel acceptance
   CSA -> PC : Open Channel
+  activate PC #yellow
+  note over PC: Channel is established
   CSB -> WB : return successful open channel
   deactivate CSB
   deactivate CSB
@@ -33,8 +38,6 @@ alt#gold #lightblue on channel open acceptance
   deactivate CSA
   WA -> A : notify successful open channel
   deactivate WA
-  activate PC #yellow
-  note over PC: Channel is established
   PC -> PC : established
   deactivate PC
 else #salmon on channel open declination
