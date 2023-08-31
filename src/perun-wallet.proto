@@ -5,10 +5,16 @@ import "google/protobuf/empty.proto";
 // ChannelService running as a background worker providing core functionality
 // to interact with Perun channels.
 service ChannelService {
+  // Initiate channel opening.
   rpc OpenChannel(ChannelOpenRequest) returns (ChannelOpenResponse);
+  // Initiate some channel update.
   rpc UpdateChannel(ChannelUpdateRequest) returns (ChannelUpdateResponse);
+  // Initiate channel closing.
   rpc CloseChannel(ChannelCloseRequest) returns (ChannelCloseResponse);
+  // Initiate force closing a channel.
   rpc ForceCloseChannel(ChannelForceCloseRequest) returns (ChannelForceCloseResponse);
+  // Initiate challenging some channel.
+  rpc ChallengeChannel(ChallengeChannelRequest) returns (ChallengeChannelResponse);
 }
 
 message ChannelOpenRequest {
@@ -35,13 +41,27 @@ message ChannelForceCloseRequest {
 message ChannelForceCloseResponse {
 }
 
+message ChallengeChannelRequest {
+}
+
+message ChallengeChannelResponse {
+}
+
 // WalletService is the wallet which integrates PerunChannels. It has to
 // provide an interface which can be called by the `ChannelService` if channel
 // updates happen and require user interaction.
 service WalletService {
   // Requesting a channel opening from the wallet. This happens if this peer is
   // not the initiator of opening a channel.
-  rpc OpenChannelRequest(OpenChannelRequest) returns (OpenChannelResponse);
+  rpc OpenChannel(OpenChannelRequest) returns (OpenChannelResponse);
+  // Requesting channel closing form the wallet. This happesn if the peer is
+  // not the initiator of closing a channel.
+  rpc CloseChannel(CloseChannelRequest) returns (CloseChannelResponse);
+  // Requesting force closing a channel from the wallet. This happens if the
+  // peer is no the initiator of closing a channel.
+  rpc ForceCloseChannel(ForceCloseChannelRequest) returns (ForceCloseChannelResponse);
+  // Notifying the wallet about a challenge event regarding some channel.
+  rpc ChallengeEvent(ChallengeEventRequest) returns (ChallengeEventResponse);
   // Send a channel update request containing the proposed/new channel state to
   // be shown in the front-end. The wallet might use this update event to query
   // the user whether or not to accept the channel update. This would in turn
@@ -52,10 +72,22 @@ service WalletService {
   rpc SignMessage(SignMessageRequest) returns SignMessageResponse;
 }
 
-message UpdateEventRequest {
+message OpenChannelRequest {
 }
 
-message UpdateEventResponse {
+message OpenChannelResponse {
+}
+
+message CloseChannelRequest {
+}
+
+message CloseChannelResponse {
+}
+
+message ChallengeEventRequest {
+}
+
+message ChallengeEventResponse {
 }
 
 message SignMessageRequest {
@@ -63,3 +95,10 @@ message SignMessageRequest {
 
 message SignMessageResponse {
 }
+
+message UpdateNotificationRequest {
+}
+
+message UpdateNotificationResponse {
+}
+
