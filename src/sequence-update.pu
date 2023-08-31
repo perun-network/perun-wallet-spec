@@ -17,15 +17,17 @@ WA -> CSA : rpc call UpdateChannel()
 activate CSA #lightgreen
 CSA --> CSB : publish update request
 activate CSB #lightgreen
-CSB -> WB : forward update request
+CSB -> WB : rpc call UpdateNotification()
 activate WB #pink
+activate WB #mediumorchid
 WB -> B : prompt for update agreement
 
 alt#gold #lightblue on channel update acceptance
   B -> WB : accept update
-  WB -> CSB : forward update acceptance/declination
+  WB -> CSB : return update acceptance/declination
+  deactivate WB
   CSB -> WB : rpc call SignChannelUpdate()
-  activate WB #mediumorchid
+  activate WB #sandybrown
   WB -> B : request signature on channel state
   B -> WB : accept/decline signature request
   alt#lightyellow #technology  on signature acceptance
@@ -41,7 +43,7 @@ alt#gold #lightblue on channel update acceptance
   else #salmon on signature declination
     [-\\ "alive signal"
     activate WB #pink
-    activate WB #mediumorchid
+    activate WB #sandybrown
     activate WA #pink
     activate CSB #lightgreen
     activate CSA #lightgreen
@@ -58,10 +60,12 @@ alt#gold #lightblue on channel update acceptance
 else #salmon on channel update declination
   [-\\ "alive signal"
   activate WB #pink
+  activate WB #mediumorchid
   activate WA #pink
   activate CSB #lightgreen
   activate CSA #lightgreen
-  WB -> CSB : forward update declination
+  WB -> CSB : return update declination
+  deactivate WB
   deactivate WB
   CSB -> CSA : publish no update agreement
   deactivate CSB
