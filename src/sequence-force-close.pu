@@ -13,27 +13,28 @@ title Force Close Channel
 activate PC #yellow
 activate CSA #lightgreen
 ...timeout channel action...
-CSA -> WA : rpc call SignRequest() w/ force close channel
+CSA -> WA : rpc call ForceCloseChannel()
 activate WA #pink
+activate WA #mediumorchid
+WA -> A : request force close channel
+A -> WA : accept force close channel
+WA -> CSA : return force close channel acceptance
+deactivate WA
+CSA -> WA : rpc call SignMessage() w/ force close channel
 activate WA #mediumorchid
 WA -> A : request signature on force close channel
 alt#gold #lightblue on signature request acceptance
   A -> WA : sign channel force close
   WA -> CSA : return signed force close channel message
   deactivate WA
-  CSA -> WA : rpc call ForceCloseChannel request
-  activate WA #mediumorchid
-  WA -> A : request force close channel
-  A -> WA : accept force close channel
-  WA -> CSA : return force close channel acceptance
-  deactivate WA
   CSA -> CSB : publish force close channel
   activate CSB #lightgreen
   alt#lightyellow #technology ForceClose with latest channel state
-    CSB -> WB : rpc call ForceCloseEvent()
-    deactivate CSB
+    CSB -> WB : rpc call ChallengeEvent()
     activate WB #pink
     WB -> WB : No challenge possible
+    WB -> CSB : return
+    deactivate CSB
     deactivate WB
     note over PC
     The force close issued was using the latest channel state, Bob can do nothing in this case.
@@ -49,12 +50,15 @@ alt#gold #lightblue on signature request acceptance
     activate WA #pink
     activate CSA #lightgreen
     activate CSB #lightgreen
-    CSB -> WB : rpc call ForceCloseEvent()
+    CSB -> WB : rpc call ChallengeEvent()
     activate WB #pink
+    activate WB #mediumorchid
     WB -> B : forward force close event, ask for challenge with latest state
+    WB -> CSB : return
+    deactivate WB
     alt Bob wants to challenge ForceClose with his latest state
       B -> WB : challenge using latest state
-      WB -> CSB : rpc call Challenge()
+      WB -> CSB : rpc call ChallengeChannel()
       activate CSB #darkgreen
       CSB -> CSA : publish challenge
       note over PC
@@ -62,9 +66,12 @@ alt#gold #lightblue on signature request acceptance
       than what Bob used to challenged. We assume the latest state is now reached.
       The channel is thus closed.
       end note
-      CSA -> WA : rpc call ChallengeEvent
-      deactivate CSA
+      CSA -> WA : rpc call ChallengeEvent()
+      activate WA #mediumorchid
       WA -> WA : challenge with latest state received, no action possible
+      WA -> CSA : return
+      deactivate CSA
+      deactivate WA
       deactivate WA
       ...challenge timeout passed...
       note over PC : channel successfully closed
