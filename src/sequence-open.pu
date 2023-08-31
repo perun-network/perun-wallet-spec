@@ -15,7 +15,7 @@ WA -> CSA : rpc call OpenChannel()
 activate CSA #lightgreen
 CSA -> CSB : publish OpenChannel request
 activate CSB #lightgreen
-CSB -> WB : rpc call OpenChannelRequest
+CSB -> WB : rpc call OpenChannel()
 activate WB #pink
 activate WB #mediumorchid
 WB -> B : Request open channel acceptance/declination

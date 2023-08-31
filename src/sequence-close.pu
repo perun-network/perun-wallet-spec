@@ -50,7 +50,7 @@ alt#gold #lightblue on channel close acceptance
     activate CSA #lightgreen
     activate PC #yellow
     B -> WB : decline signature request
-    WB -> CSB : rpc call ChannelClose w/ declination
+    WB -> CSB : rpc call ChannelClose() w/ declination
     activate CSB #darkgreen
     deactivate WB
     CSB -> CSA : publish unsuccessful channel close

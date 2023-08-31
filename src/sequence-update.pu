@@ -26,7 +26,7 @@ alt#gold #lightblue on channel update acceptance
   B -> WB : accept update
   WB -> CSB : return update acceptance/declination
   deactivate WB
-  CSB -> WB : rpc call SignChannelUpdate()
+  CSB -> WB : rpc call SignMessage() w/ channel state update
   activate WB #sandybrown
   WB -> B : request signature on channel state
   B -> WB : accept/decline signature request
