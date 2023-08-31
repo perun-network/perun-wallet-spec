@@ -17,7 +17,7 @@ WA -> CSA : rpc call CloseChannel()
 activate CSA #lightgreen
 CSA -> CSB : publish channel close request
 activate CSB #lightgreen
-CSB -> WB : rpc call CloseChannelRequest()
+CSB -> WB : rpc call CloseChannel()
 activate WB #pink
 activate WB #mediumorchid
 WB -> B : request close request acceptance/declination
@@ -25,8 +25,8 @@ alt#gold #lightblue on channel close acceptance
   B -> WB : accept channel close
   WB -> CSB : return channel close acceptance
   deactivate WB
-  CSB -> WB : rpc call SignRequest()
-  activate WB #mediumorchid
+  CSB -> WB : rpc call SignMessage()
+  activate WB #sandybrown
   WB -> B : request signature on channel close
   alt#lightyellow #technology  on signature request acceptance
     B -> WB : sign channel close
@@ -44,7 +44,7 @@ alt#gold #lightblue on channel close acceptance
   else #salmon on signature request declination
     [-\\ "alive signal"
     activate WB #pink
-    activate WB #mediumorchid
+    activate WB #sandybrown
     activate CSB #lightgreen
     activate WA #pink
     activate CSA #lightgreen
@@ -71,7 +71,7 @@ else #salmon on channel close declination
   activate CSB #lightgreen
   activate WA #pink
   activate CSA #lightgreen
-  WB -> CSB : forward channel close declination
+  WB -> CSB : return close declination
   deactivate WB
   deactivate WB
   CSB -> CSA : publish unsuccessful channel close
