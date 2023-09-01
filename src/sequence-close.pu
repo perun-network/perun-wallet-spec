@@ -60,6 +60,7 @@ alt#gold #lightblue on channel close acceptance
   deactivate WB
 else #salmon on channel close declination
   [-\\ "alive signal"
+  activate PC #yellow
   activate WB #pink
   activate WB #mediumorchid
   activate CSB #lightgreen
