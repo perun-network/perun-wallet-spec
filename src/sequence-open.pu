@@ -7,12 +7,21 @@ entity "Channel Service Bob" as CSB
 entity "Wallet Bob" as WB
 actor Bob as B
 
+skinparam sequenceReferenceBackgroundColor wheat
+
 title Open Channel
+
+note across: We assume the happy case where both parties always accept signature requests.
 
 A -> WA : request open channel
 activate WA #pink
 WA -> CSA : rpc call OpenChannel()
 activate CSA #lightgreen
+CSA -> WA : rpc call SignMessage() w/ ChannelOpening
+activate WA #mediumorchid
+ref over A, WA, CSA : SignMessage() procedure
+WA -> CSA : return signed ChannelOpening
+deactivate WA
 CSA -> CSB : publish OpenChannel request
 activate CSB #lightgreen
 CSB -> WB : rpc call OpenChannel()
@@ -21,43 +30,34 @@ activate WB #mediumorchid
 WB -> B : Request open channel acceptance/declination
 WB -> CSB : return
 deactivate WB
-alt#gold #lightblue on channel open acceptance
-  B -> WB : Accept open channel request
-  WB -> CSB : rpc call OpenChannel()
-  activate CSB #darkgreen
-  CSB -> CSA : publish open channel acceptance
-  CSA -> PC : Open Channel
-  activate PC #yellow
-  note over PC: Channel is established
-  CSB -> WB : return successful open channel
-  deactivate CSB
-  deactivate CSB
-  WB -> B : notify successful open channel
-  deactivate WB
-  CSA -> WA : return successful open channel
-  deactivate CSA
-  WA -> A : notify successful open channel
-  deactivate WA
-  PC -> PC : established
-  deactivate PC
-else #salmon on channel open declination
-  [-\\ "alive signal"
-  activate CSA #lightgreen
-  activate CSB #lightgreen
-  activate WB #pink
-  activate WA #pink
-  B -> WB : Decline open channel request
-  WB -> CSB : rpc call OpenChannel() w/ Declination
-  activate CSB #darkgreen
-  CSB -> CSA : publish OpenChannel declination
-  CSB -> WB : return
-  deactivate CSB
-  deactivate CSB
-  deactivate WB
-  CSA -> WA : return open channel declination
-  deactivate CSA
-  WA -> A : notify open channel declination
-  deactivate WA
-end
+
+B -> WB : Accept open channel request
+WB -> CSB : rpc call OpenChannel()
+activate CSB #darkgreen
+CSB -> WB : rpc call SignMessage w/ ChannelOpening
+activate WB #mediumorchid
+ref over B, WB, CSB : SignMessage() procedure
+WB -> CSB : return signed ChannelOpening
+deactivate WB
+CSB -> CSA : publish open channel acceptance
+CSA -> WA : rpc call SignTransaction() w/ Opening Transaction
+activate WA #mediumorchid
+ref over A, WA, CSA : SignTransaction() procedure
+WA -> CSA : return signed transaction
+deactivate WA
+CSA -> PC : Open Channel
+activate PC #yellow
+note over PC: Channel is established
+PC -> CSB : OpenChannel event emitted
+PC -> CSA : OpenChannel event emitted
+CSB -> WB : return successful open channel
+deactivate CSB
+deactivate CSB
+WB -> B : notify successful open channel
+deactivate WB
+CSA -> WA : return successful open channel
+deactivate CSA
+WA -> A : notify successful open channel
+deactivate WA
 
 @enduml

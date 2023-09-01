@@ -12,6 +12,12 @@ to/from a Perun wallet backend provider.
 The communication between the channel service and the wallet integrating Perun
 channels is defined in the following sequence diagram.
 
+### Signing Messages
+![sign-msg](./resources/sequence-sign-message.png)
+
+### Signing Transactions
+![sign-msg](./resources/sequence-sign-transaction.png)
+
 ### Opening a channel
 ![open](./resources/sequence-open.png)
 

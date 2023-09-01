@@ -1,0 +1,27 @@
+@startuml
+actor Alice as A
+entity "Wallet Alice" as WA
+entity "Channel Service Alice" as CSA
+
+title Sign Message
+
+activate CSA #lightgreen
+CSA -> WA : rpc call SignMessage() w/ data
+activate WA #pink
+WA -> A : forward SignMessage request
+alt#gold #lightblue on sign message accept
+  A -> WA : accept and sign message
+  WA -> CSA : return signed message
+  deactivate WA
+  deactivate CSA
+else #salmon on sign message decline
+  [-\\ "alive signal"
+  activate WA #pink
+  activate CSA #lightgreen
+  A -> WA : decline sign message request
+  WA -> CSA : return declination
+  deactivate WA
+  deactivate CSA
+end
+
+@enduml

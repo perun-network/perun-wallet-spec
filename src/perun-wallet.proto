@@ -68,8 +68,13 @@ service WalletService {
   // lead to a call to `UpdateChannel` from WalletService -> ChannelService
   // with the updated channel state.
   rpc UpdateNotification(UpdateNotificationRequest) returns (UpdateNotificationResponse);
+
   // Request a signature on the given message by some wallet.
   rpc SignMessage(SignMessageRequest) returns SignMessageResponse;
+
+  rpc SignTransaction()
+
+  rpc GetAssets()
 }
 
 message OpenChannelRequest {

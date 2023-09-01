@@ -7,7 +7,11 @@ entity "Channel Service Bob" as CSB
 entity "Wallet Bob" as WB
 actor Bob as B
 
+skinparam sequenceReferenceBackgroundColor wheat
+
 title Force Close Channel
+
+note across: We assume the happy case where both parties always accept signature requests.
 
 [-\\ "alive signal"
 activate PC #yellow
@@ -20,106 +24,107 @@ WA -> A : request force close channel
 A -> WA : accept force close channel
 WA -> CSA : return force close channel acceptance
 deactivate WA
-CSA -> WA : rpc call SignMessage() w/ force close channel
+CSA -> WA : rpc call SignTransaction() w/ force close channel
 activate WA #mediumorchid
-WA -> A : request signature on force close channel
-alt#gold #lightblue on signature request acceptance
-  A -> WA : sign channel force close
-  WA -> CSA : return signed force close channel message
+ref over A, CSA, WA : SignTransaction() procedure
+WA -> CSA : return signed force close channel message
+deactivate WA
+CSA -> CSB : publish force close channel
+activate CSB #lightgreen
+alt#lightyellow #technology ForceClose with latest channel state
+  CSB -> WB : rpc call ChallengeEvent()
+  activate WB #pink
+  WB -> WB : No challenge possible
+  WB -> CSB : return
+  note over PC
+  The force close issued was using the latest channel state, Bob can do nothing in this case.
+  end note
+  ...challenge timeout elapsed...
+  CSA -> WA : notify channel settlement
+  deactivate CSA
+  WA -> A : notify successful channel force close
   deactivate WA
-  CSA -> CSB : publish force close channel
-  activate CSB #lightgreen
-  alt#lightyellow #technology ForceClose with latest channel state
-    CSB -> WB : rpc call ChallengeEvent()
-    activate WB #pink
-    WB -> WB : No challenge possible
-    WB -> CSB : return
-    deactivate CSB
-    deactivate WB
-    note over PC
-    The force close issued was using the latest channel state, Bob can do nothing in this case.
-    end note
-    CSA -> WA : notify channel settlement
-    deactivate CSA
-    WA -> A : notify successful channel force close
-    deactivate WA
-    destroy PC
-  else #technology ForceClose with channel state older than latest state
-    [-\\ "alive signal"
-    activate PC #yellow
-    activate WA #pink
-    activate CSA #lightgreen
-    activate CSB #lightgreen
-    CSB -> WB : rpc call ChallengeEvent()
-    activate WB #pink
-    activate WB #mediumorchid
-    WB -> B : forward force close event, ask for challenge with latest state
-    WB -> CSB : return
-    deactivate WB
-    alt Bob wants to challenge ForceClose with his latest state
-      B -> WB : challenge using latest state
-      WB -> CSB : rpc call ChallengeChannel()
-      activate CSB #darkgreen
-      CSB -> CSA : publish challenge
-      note over PC
-      Alice would be able to counter challenge if she has a state with a higher version number
-      than what Bob used to challenged. We assume the latest state is now reached.
-      The channel is thus closed.
-      end note
-      CSA -> WA : rpc call ChallengeEvent()
-      activate WA #mediumorchid
-      WA -> WA : challenge with latest state received, no action possible
-      WA -> CSA : return
-      deactivate CSA
-      deactivate WA
-      deactivate WA
-      ...challenge timeout passed...
-      note over PC : channel successfully closed
-      CSB -> WB : return successful channel force close
-      deactivate CSB
-      destroy PC
-      deactivate CSB
-      WB -> B : notify successful channel force close
-      deactivate WB
-    else #salmon Bob does not want to challenge ForceClose
-      [-\\ "alive signal"
-      activate CSA #lightgreen
-      activate CSB #lightgreen
-      activate WB #pink
-      activate WA #pink
-      activate PC #yellow
-      B -> WB : decline challenge request
-      WB -> CSB : rpc call Challenge() w/ declination
-      activate CSB #darkgreen
-      CSB -> CSB : no challenge to issue
-      CSB -> WB : return
-      deactivate WB
-      deactivate CSB
-      deactivate CSB
-      ...challenge timeout passed...
-      CSA -> WA : return successful channel force close
-      deactivate CSA
-      note over PC
-      The channel is closed with Alice's ForceClose state.
-      end note
-      destroy PC
-      WA -> A : notify successful channel force close
-      deactivate WA
-    end
-else #salmon on signature request declination
+  CSB -> WB : notify channel settlement
+  deactivate CSB
+  WB -> B : notify channel settlement
+  deactivate WB
+  destroy PC
+else #technology ForceClose with channel state older than latest state
   [-\\ "alive signal"
+  activate PC #yellow
   activate WA #pink
   activate CSA #lightgreen
-  activate PC #yellow
-  WA -> CSA : forward signature declination
-  deactivate WA
-  CSA -> CSA : abort force close
-  deactivate CSA
-  note over PC
-  Alice declined the signature request. The payment channel stays established until one of the parties
-  does an action.
-  end note
+  activate CSB #lightgreen
+  CSB -> WB : rpc call ChallengeEvent()
+  activate WB #pink
+  activate WB #mediumorchid
+  WB -> B : forward force close event, ask for challenge with latest state
+  WB -> CSB : return
+  deactivate WB
+  alt Bob wants to challenge ForceClose with his latest state
+    B -> WB : challenge using latest state
+    WB -> CSB : rpc call ChallengeChannel()
+    activate CSB #darkgreen
+    CSB -> WB : rpc call SignMessage() w/ ChallengeMessage
+    activate WB #mediumorchid
+    ref over B, WB, CSB : SignMessage() procedure
+    WB -> CSB : return signed ChallengeMessage
+    deactivate WB
+    CSB -> WB : rpc call SignTransaction() w/ challenge TX
+    activate WB #mediumorchid
+    ref over B, WB, CSB : SignTransaction() procedure
+    WB -> CSB : return signed challenge TX
+    deactivate WB
+    CSB -> CSA : publish challenge
+    note over PC
+    Alice would be able to counter challenge if she has a state with a higher version number
+    than what Bob used to challenged. We assume the latest state is now reached.
+    The channel is thus closed.
+    end note
+    CSA -> WA : rpc call ChallengeEvent()
+    activate WA #mediumorchid
+    WA -> WA : challenge with latest state received, no action possible
+    WA -> CSA : return
+    deactivate WA
+    ...challenge timeout elapsed...
+    note over PC : channel successfully closed
+    CSB -> WB : return successful channel force close
+    deactivate CSB
+    CSA -> WA : notify channel settlement
+    deactivate CSA
+    WA -> A : notify channel settlement
+    deactivate WA
+    destroy PC
+    deactivate CSB
+    WB -> B : notify successful channel force close
+    deactivate WB
+  else #salmon Bob does not want to challenge ForceClose
+    [-\\ "alive signal"
+    activate CSA #lightgreen
+    activate CSB #lightgreen
+    activate WB #pink
+    activate WA #pink
+    activate PC #yellow
+    B -> WB : decline challenge request
+    WB -> CSB : rpc call Challenge() w/ declination
+    activate CSB #darkgreen
+    CSB -> CSB : no challenge to issue
+    CSB -> WB : return
+    deactivate WB
+    deactivate CSB
+    deactivate CSB
+    ...challenge timeout passed...
+    CSA -> WA : return successful channel force close
+    deactivate CSA
+    note over PC
+    The channel is closed with Alice's ForceClose state.
+    end note
+    destroy PC
+    WA -> A : notify successful channel force close
+    deactivate WA
+  end
 end
+
 deactivate PC
 
 @enduml
