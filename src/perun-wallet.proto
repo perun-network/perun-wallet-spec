@@ -1,6 +1,9 @@
 syntax = "proto3";
 
+import "wire.proto"
 import "google/protobuf/empty.proto";
+
+package perunservice;
 
 // ChannelService running as a background worker providing core functionality
 // to interact with Perun channels.
@@ -17,93 +20,228 @@ service ChannelService {
   rpc ChallengeChannel(ChallengeChannelRequest) returns (ChallengeChannelResponse);
 }
 
+// Generic rejected message. Returned by any endpoint on failure.
+message Rejected {
+  string reason = 1;
+}
+
 message ChannelOpenRequest {
+  Identifier peer = 1;
+  Assets assets = 2;
 }
 
 message ChannelOpenResponse {
+  oneof msg {
+    Rejected rejected = 1;
+    bytes channel_id = 2;
+  }
 }
 
 message ChannelUpdateRequest {
+  // The state with which the channel should be updated.
+  perunwire.State state = 1;
+  // The channel id of the channel to be updated.
+  bytes channel_id = 2;
+}
+
+message SuccessfulUpdate {
+  // The state with which the channel was updated.
+  perunwire.State state = 1;
+  // The channel id of the channel which was updated.
+  bytes channel_id = 2;
 }
 
 message ChannelUpdateResponse {
+  oneof msg {
+    Rejected rejected = 1;
+    SuccessfulUpdate update = 2;
+  }
 }
 
 message ChannelCloseRequest {
+  // The channel id of the channel to be closed.
+  bytes channel_id = 1;
+}
+
+message SuccessfulClose {
+  // The channel id of the channel which was closed.
+  bytes channel_id = 1;
 }
 
 message ChannelCloseResponse {
+  oneof msg {
+    Rejected rejected = 1;
+    SuccessfulClose close = 2;
+  }
 }
 
 message ChannelForceCloseRequest {
+  // The channel id of the channel to be force closed.
+  bytes channel_id = 1;
+}
+
+message SuccessfulForceClose {
+  // The channel id of the channel which was force closed.
+  bytes channel_id = 1;
 }
 
 message ChannelForceCloseResponse {
+  oneof msg {
+    Rejected rejected = 1;
+    SuccessfulClose close = 2;
+  }
 }
 
 message ChallengeChannelRequest {
+  // The channel id of the channel to be challenged.
+  bytes channel_id = 1;
+  // The state with which the channel should be challenged.
+  perunwire.State state = 1;
 }
 
 message ChallengeChannelResponse {
+  oneof msg {
+    Rejected rejected = 1;
+    // In case the challenge was successful return the updated channel state.
+    // Can be used for confirmation in the frontend.
+    SuccessfulUpdate update = 2;
+  }
 }
 
 // WalletService is the wallet which integrates PerunChannels. It has to
 // provide an interface which can be called by the `ChannelService` if channel
 // updates happen and require user interaction.
 service WalletService {
-  // Requesting a channel opening from the wallet. This happens if this peer is
-  // not the initiator of opening a channel.
-  rpc OpenChannel(OpenChannelRequest) returns (OpenChannelResponse);
-  // Requesting channel closing form the wallet. This happesn if the peer is
-  // not the initiator of closing a channel.
-  rpc CloseChannel(CloseChannelRequest) returns (CloseChannelResponse);
-  // Requesting force closing a channel from the wallet. This happens if the
-  // peer is no the initiator of closing a channel.
-  rpc ForceCloseChannel(ForceCloseChannelRequest) returns (ForceCloseChannelResponse);
-  // Notifying the wallet about a challenge event regarding some channel.
-  rpc ChallengeEvent(ChallengeEventRequest) returns (ChallengeEventResponse);
-  // Send a channel update request containing the proposed/new channel state to
-  // be shown in the front-end. The wallet might use this update event to query
-  // the user whether or not to accept the channel update. This would in turn
-  // lead to a call to `UpdateChannel` from WalletService -> ChannelService
-  // with the updated channel state.
+  // Requesting a channel opening from the wallet. This happens if the Perun
+  // channel service received a channel opening request from another peer.
+  // This method lets the wallet know that it should ask the user whether or
+  // not to accept the channel opening request.
+  rpc OpenChannel(OpenChannelRequest) returns (google.protobuf.Empty);
+
+  // Requesting channel closing form the wallet. This happesn if the Perun
+  // channel service received a channel closing request from another peer.
+  // This method lets the wallet know that it should ask the user whether or
+  // not to accept the channel closing request.
+  rpc CloseChannel(CloseChannelRequest) returns (google.protobuf.Empty);
+
+  // Requesting force closing a channel from the wallet. This happens if some
+  // Perun channel can be force closed by this user and might be called by the
+  // Perun channel service if it deems it to be an appropriate action.
+  rpc ForceCloseChannel(ForceCloseChannelRequest) returns (google.protobuf.Empty);
+
+  // Notifying the wallet about a challenge event regarding some channel. This
+  // is called by the Perun channel service if it receives challenge events
+  // from the ledger. The wallet might use this event to query the user whether
+  // or not to act on the challenge event.
+  rpc ChallengeEvent(ChallengeEventRequest) returns (google.protobuf.Empty);
+
+  // The Perun channel service calls this method if it received a channel
+  // update request from another peer. The wallet might use this channel update
+  // request containing the proposed/new channel state to shown it in the
+  // front-end. The wallet might use this update event to query the user
+  // whether or not to accept the channel update.
   rpc UpdateNotification(UpdateNotificationRequest) returns (UpdateNotificationResponse);
 
   // Request a signature on the given message by some wallet.
   rpc SignMessage(SignMessageRequest) returns SignMessageResponse;
 
-  rpc SignTransaction()
+  // Request a signature on the given transaction by some wallet.
+  rpc SignTransaction(SignTransactionRequest) return SignTransactionResponse;
 
-  rpc GetAssets()
+  // Request a list outpoints from a wallet at least matching the requested
+  // amount of possibly different assets. This can be called by the Perun
+  // channel backend if it builds transactions.
+  rpc GetAssets(GetAssetsRequest) returns GetAssetsResponse;
 }
 
+// Called by the Perun channel service if it received a channel opening request
+// from another peer. The proposed channel state is passed to the wallet which
+// might use it to show it in to the user.
 message OpenChannelRequest {
-}
-
-message OpenChannelResponse {
+  // The state with which the channel should be opened.
+  perunwire.State state = 1;
+  // The channel id of the channel to be opened.
+  bytes channel_id = 2;
 }
 
 message CloseChannelRequest {
-}
-
-message CloseChannelResponse {
+  // The channel id of the channel to be closed.
+  bytes channel_id = 2;
+  // The state with which the channel should be closed.
+  perunwire.State state = 1;
 }
 
 message ChallengeEventRequest {
-}
-
-message ChallengeEventResponse {
-}
-
-message SignMessageRequest {
-}
-
-message SignMessageResponse {
+  // The channel id of the channel which was challenged.
+  bytes channel_id = 1;
+  // The state with which the channel was challenged.
+  perunwire.State state = 2;
 }
 
 message UpdateNotificationRequest {
+  // The state with which the channel should be updated.
+  perunwire.State state = 1;
+  // The channel id of the channel to be updated.
+  bytes channel_id = 2;
 }
 
 message UpdateNotificationResponse {
+  // Whether or not the channel update was accepted by the user.
+  bool accepted = 1;
 }
 
+message SignMessageRequest {
+  // The message to be signed.
+  bytes data = 1;
+}
+
+message SignMessageResponse {
+  oneof msg {
+    Rejected rejected = 1;
+    // The signature of the message.
+    bytes signature = 2;
+  }
+}
+
+message GetAssetsRequest {
+  // The requested assets.
+  perunwire.Balances assets = 1;
+}
+
+message Asset {
+  // The asset id of the asset.
+  bytes asset_id = 1;
+  // A list of outpoints of the given asset_id.
+  repeated bytes outpoints = 2;
+}
+
+message Assets {
+  repeated Asset assets = 1;
+}
+
+message UnmatchableAssetsResponse {
+  // The index of the unmatchable assets from the original request.
+  uint32 asset_idx = 1;
+  // A possible reason if more information is available.
+  string reason = 2;
+}
+
+message GetAssetsResponse {
+  oneof msg {
+    UnmatchableAssetsResponse rejected = 2;
+    Assets assets = 1;
+  }
+}
+
+message SignTransactionRequest {
+  // The transaction to be signed.
+  bytes transaction = 1;
+}
+
+message SignTransactionResponse {
+  oneof msg {
+    Rejected rejected = 1;
+    // The signature of the transaction.
+    bytes signature = 2;
+  }
+}
