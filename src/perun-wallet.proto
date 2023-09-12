@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-import "wire.proto"
+import "wire.proto";
 import "google/protobuf/empty.proto";
 
 package perunservice;
@@ -26,7 +26,7 @@ message Rejected {
 }
 
 message ChannelOpenRequest {
-  Identifier peer = 1;
+  bytes peer = 1;
   Assets assets = 2;
 }
 
@@ -96,7 +96,7 @@ message ChallengeChannelRequest {
   // The channel id of the channel to be challenged.
   bytes channel_id = 1;
   // The state with which the channel should be challenged.
-  perunwire.State state = 1;
+  perunwire.State state = 2;
 }
 
 message ChallengeChannelResponse {
@@ -143,15 +143,15 @@ service WalletService {
   rpc UpdateNotification(UpdateNotificationRequest) returns (UpdateNotificationResponse);
 
   // Request a signature on the given message by some wallet.
-  rpc SignMessage(SignMessageRequest) returns SignMessageResponse;
+  rpc SignMessage(SignMessageRequest) returns (SignMessageResponse);
 
   // Request a signature on the given transaction by some wallet.
-  rpc SignTransaction(SignTransactionRequest) return SignTransactionResponse;
+  rpc SignTransaction(SignTransactionRequest) returns (SignTransactionResponse);
 
   // Request a list outpoints from a wallet at least matching the requested
   // amount of possibly different assets. This can be called by the Perun
   // channel backend if it builds transactions.
-  rpc GetAssets(GetAssetsRequest) returns GetAssetsResponse;
+  rpc GetAssets(GetAssetsRequest) returns (GetAssetsResponse);
 }
 
 // Called by the Perun channel service if it received a channel opening request
@@ -170,6 +170,14 @@ message CloseChannelRequest {
   // The state with which the channel should be closed.
   perunwire.State state = 1;
 }
+
+message ForceCloseChannelRequest {
+  // The channel id of the channel to be closed.
+  bytes channel_id = 2;
+  // The state with which the channel should be closed.
+  perunwire.State state = 1;
+}
+
 
 message ChallengeEventRequest {
   // The channel id of the channel which was challenged.
