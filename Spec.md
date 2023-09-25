@@ -6,6 +6,8 @@ integrated into a wallet.
 
 ## Integration
 
+Protobuf descriptions for all here mentioned services are contained in [`./src/proto/perun-wallet.proto`](./src/proto/perun-wallet.proto).
+
 For a primer on how to integrate Perun channels into your wallet, check out the
 section [Integrating Perun payment channels](./README.md#integrating-perun-payment-channels)
 in the README of this repository.
