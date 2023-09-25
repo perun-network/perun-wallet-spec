@@ -4,6 +4,12 @@ The Perun wallet API specification describing the architecture and
 corresponding messages used when interacting with Perun Payment Channels
 integrated into a wallet.
 
+## Integration
+
+For a primer on how to integrate Perun channels into your wallet, check out the
+section [Integrating Perun payment channels](./README.md#Integrating Perun payment channels)
+in the README of this repository.
+
 ## Architecture
 
 ![architecture](./resources/spec-architecture.jpg)
