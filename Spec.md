@@ -7,7 +7,7 @@ integrated into a wallet.
 ## Integration
 
 For a primer on how to integrate Perun channels into your wallet, check out the
-section [Integrating Perun payment channels](./README.md#Integrating Perun payment channels)
+section [Integrating Perun payment channels](./README.md#integrating-perun-payment-channels)
 in the README of this repository.
 
 ## Architecture
