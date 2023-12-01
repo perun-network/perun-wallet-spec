@@ -136,4 +136,4 @@ Use molecule:
 
 
 ### Contact us
-If remain open questions, feel free to open an issue on github. Alternatively, check out our [discord](https://perun.network/discord).
+If there remain open questions, feel free to open an issue on github. Alternatively, check out our [discord](https://perun.network/discord).
