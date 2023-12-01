@@ -34,11 +34,17 @@ The architecture of the wallet integration is described in detail within this re
 The wallet integration consists of two components, each exposing a RPC api to the other.
 
 #### Channel Service
-The Channel Service exposes the ChannelService api to the wallet. It is a Go program that interacts with a CKB node (via rpc), go-perun (as a library) and the perun-ckb-backend (as a library). Very roughly speaking, it acts as a Perun Protocol **proxy** to the wallet. Currently, we imagine a channel service running on the same device as the wallet. We use RPC though, specifically to accomodate for different setups, where the channel service is running remotely or even shared by multiple wallets. The channel service fulfills two purposes:
+The channel service exposes the ChannelService api to the wallet. It is a Go program that interacts with a CKB node (via rpc), go-perun (as a library) and the perun-ckb-backend (as a library). Very roughly speaking, it acts as a Perun Protocol **proxy** to the wallet. Currently, we imagine a channel service running on the same device as the wallet. We use RPC though, specifically to accomodate for different setups, where the channel service is running remotely or even shared by multiple wallets. The channel service fulfills two purposes:
 1. Expose the (simplified) Perun Channel API to the wallet (`OpenChannel`, `UpdateChannel`, `CloseChannel`). In this role, it handles requests by the wallet, e.g. to open a channel with another party, using go-perun and the perun-ckb-backend.
 2. Forward (simplified) protocol messages from the protocol (go-perun) side to the wallet. For this, the channel service queries the WalletService (served by the wallet) through RPC.
 
-There already exists a first channel-service implementation [here](https://github.com/perun-network/channel-service). It is implemented in the effort to integrate Perun Channels into the Neuron wallet, but it is kept "wallet-agnostic". Thus, you should be able to use this service directly to integrate your wallet, with only minimal changes necessary.
+The channel service handles a lot of responsibilities **through go-perun**, such as:
+- Keeping track of the open channels and channel states
+- Watching the chain for relevant events (using the perun-ckb-backend's [adjudicator subscription](https://github.com/perun-network/perun-ckb-backend/tree/dev/channel/adjudicator)) and acting according to protocol. Note that is alread covered by perun-ckb-backend and go-perun. The channel-service only needs to provide some callback handlers.
+- Persisting channels and relevant channel data (e.g. using go-perun's [Persistor](https://github.com/perun-network/go-perun/blob/main/channel/persistence/persistence.go))
+- Communication between channel participants (users). Here, go-perun already provides functionality for e.g. network communication. You just need to initialize it.
+
+There already exists a first channel-service implementation [here](https://github.com/perun-network/channel-service). It is implemented in the effort to integrate Perun Channels into the Neuron wallet, but it is kept "wallet-agnostic". Thus, you should be able to use this service directly to integrate your wallet, with only minimal changes necessary. We note that the current channel service implementation does not support persistence and only supports in-process communication as it is in a POC/demo state.
 
 ### Wallet Service
 The Wallet Service depends greatly on the target wallet you want to integrate. Generally, the Wallet Service must expose the Wallet Service API (`OpenChannel`, `UpdateNotification`, `SignMessage`, `SignTransactions`) through RPC for the Channel Service to use.
@@ -67,7 +73,7 @@ The Perun protocol requires parties to go on-chain (send transactions), for open
 - lock funds (CKBytes, UDTs) in the channel during opening / funding
 - unlock the channel - our current PFLS requires a certain lock script to be present in the inputs of a transaction for the transaction to consume the channel cell that is locked by the PFLS. We recommend to use the Secp256K1Blake160SigHashAll as unlock script, preferably with the key that is used for fees and funding anyway because then the channel is automatically unlocked.
 
-The idea is that transactions are prepared by the channel service (through the perun-ckb-backend) so that the wallet only needs to sign them and put the signature as witness in the correct place. The wallet does not need to send the transaction itself. We kept this API on a byte-level to allow for different channel service and wallet implementations. E.g. the wallet might just return the signature on the given transaction and the channel service is then responsible for putting it in the correct witness field.
+The idea is that transactions are prepared by the channel service (through the perun-ckb-backend) so that the wallet only needs to sign them and put the signature as witness in the correct place. The wallet does not need to send the transaction itself. We kept this API on a byte-level to allow for different channel service and wallet implementations. E.g. the wallet might just return the signature on the given transaction and the channel service is then responsible for putting it in the correct witness field. We emphasize that the Perun protocol makes use of "non-standard" lockscripts and typescripts. You need to make sure that your wallet's transaction signing is able to handle transactions with fund inputs (locked with PFLS) and channel-cell inputs (locked with PCLS) with the according witnesses. The wallet's transaction signing receives a (balanced) transaction with all necessary inputs and outputs and should sign the transaction such that all payment inputs (e.g. secp256k1sighashall lockscripts) verify without interfering with the Perun inputs and witnesses.
 
 #### GetAssets
 The GetAssets endpoint is currently unused. The idea is, that it should be possible for the wallet (and by extension the user) to decide which specific assets (outpoints) to use to e.g. fund the channel with or pay fees. This migh be especially handy if you consider UDT assets. Currently this is not supported, as it would require a lot of changes to parts of the perun-ckb-backend. The used outpoints for the funding and payments of fees are decided by the perun-ckb-backend.
@@ -86,7 +92,7 @@ We conclude with briefly summarizing the necessary steps to integrate Perun into
             - WalletServiceClient
             - go-perun
             - perun-ckb-backend
-            - user our prototype implementation as guidance
+            - use our prototype implementation as guidance
 - Implement wallet service
     - generate proto services
     - you will most likely need to generate the molecule for the perun-types for the language of your wallet (`.mol` files in https://github.com/perun-network/perun-ckb-contract/tree/dev/contracts/perun-common)
@@ -94,4 +100,40 @@ We conclude with briefly summarizing the necessary steps to integrate Perun into
     - Implement ChannelServiceClient
     - Implement UI components to allow the user to interact with channels and accept/reject incoming open requests, updates or signing requests for channel state or transactions
 - Connect services through RPC
-               
+
+
+### Thoughts on Security, Potential Risks and Remedies
+While the Perun protocol itself has been proven secure, there is no guarantee that the Nervos/CKB instantiation comes without security issues. All of the components (contracts, backend, ...) are in an early stage of development and might contain security vulnerabilities that, in the worst case, may lead to loss of funds. We advise to treat the components as such and perform comprehensive testing before using them with real funds. This especially applies to the existing [channel-service](https://github.com/perun-network/channel-service) implementation and the neuron integration, as they are still very proof-of-concept-like.
+
+There are also some security considerations concerning the actual integration into a wallet. The most important items that come to mind are:
+- The channel-service acts as a trusted component, but it is sensible to verify everything as far as possible, before issuing signatures e.g.:
+    - Verify the integrity of channel states in your wallet before presenting them to the user to sign them. You should provide both the raw bytes as well as a decoding displayed as structural / human-readable representation. You can use our molecule types for this.
+    - The channel-service will provide the wallet with transactions ready to sign e.g. for opening, funding, disputes and closing/withdrawal. You can improve security by both verifying these transactions as far as possible and explaining / representing what they actually do to the user before prompting the user to sign them.
+- Keep all private-keys inside the wallet. It would be possible (and probably easier) to implement this such that the keys for signing updates/transactions are kept within the channel-service. We strongly advise against this.
+- Keep in mind that loss of funds can also happen without any malicious actors e.g. due to bugs. E.g.: If there were a bug in the perun-ckb-backend that lead to failure of building a closing/withdrawal transaction, you would have a very hard time reclaiming the funds manually. We advise to do intensive testing before using your integration with real funds on mainnet.
+
+### FAQ
+
+#### What if my wallet is already implemented in Go?
+In this case you don't need to bother with all this (services, RPC, ...). You can just use the go-perun and perun-ckb-backend API to directly integrate Perun channels into Your wallet. There is no need for a channel service running in a separate process.
+
+#### How do I implement the Perun logic correctly?
+The good news is, you don't really need to. Everything Perun-specific can be handled through the perun-ckb-backend and go-perun libraries within the channel service.
+
+#### Is it safe to use Perun channels?
+Conceptually yes, though you should do a lot of testing to make sure your final implementation does not contain any bugs / flaws. In the worst case, a bug may lead to loss or theft of funds.
+
+#### How are channels persisted when I close the wallet?
+It is the channel service's responsibility to persist states. It should use go-perun's [Persistor](https://github.com/perun-network/go-perun/blob/main/channel/persistence/persistence.go) to make sure that all necessary information is persisted. If you run into issues, where you want to display channel info in your wallet and this info isn't persisted when you close the wallet, then you could e.g. add an RPC call that asks the channel service for that info.
+
+#### Do I need to watch the chain for events that are relevant to my Channels?
+There is already functionality for this in the perun-ckb-backend and go-perun. You just need to initialize it correctly in the channel service upon channel opening.
+
+#### How do I decode Perun types?
+Use molecule: 
+- https://github.com/perun-network/perun-ckb-contract/blob/dev/contracts/perun-common/types.mol
+- https://github.com/perun-network/perun-ckb-contract/blob/dev/contracts/perun-common/offchain_types.mol
+
+
+### Contact us
+If remain open questions, feel free to open an issue on github. Alternatively, check out our [discord](https://perun.network/discord).
