@@ -32,7 +32,7 @@ message GetChannelsRequest {
 message GetChannelsResponse {
   oneof msg {
     Rejected rejected = 1;
-    bytes channels = 2;
+    perunwire.State state = 2;
   }
 }
 
