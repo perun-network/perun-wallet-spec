@@ -14,11 +14,26 @@ service ChannelService {
   rpc UpdateChannel(ChannelUpdateRequest) returns (ChannelUpdateResponse);
   // Initiate channel closing.
   rpc CloseChannel(ChannelCloseRequest) returns (ChannelCloseResponse);
+  // Query the current state of the Channels.option
+  rpc GetChannels(GetChannelsRequest) returns (GetChannelsResponse);
+
 }
 
 // Generic rejected message. Returned by any endpoint on failure.
 message Rejected {
   string reason = 1;
+}
+
+message GetChannelsRequest {
+  // The channel id of the channel to be closed.
+  bytes requester = 1;
+}
+
+message GetChannelsResponse {
+  oneof msg {
+    Rejected rejected = 1;
+    perunwire.State state = 2;
+  }
 }
 
 message ChannelOpenRequest {
