@@ -21,7 +21,8 @@ service ChannelService {
   rpc RestoreChannels(RestoreChannelsRequest) returns (RestoreChannelsResponse);
 
   rpc ClosePerunClient(ClosePerunClientRequest) returns (ClosePerunClientResponse);
-
+  
+  //For testing purposes
   rpc NewPerunClient(NewPerunClientRequest) returns (NewPerunClientResponse);
 }
 
@@ -57,7 +58,7 @@ message Rejected {
 }
 
 message GetChannelsRequest {
-  // The channel id of the channel to be closed.
+  //L1 address of requester (serialized offchain participant)
   bytes requester = 1;
 }
 
