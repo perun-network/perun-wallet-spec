@@ -64,8 +64,12 @@ message GetChannelsRequest {
 message GetChannelsResponse {
   oneof msg {
     Rejected rejected = 1;
-    perunwire.State state = 2;
+    ChannelStates states = 2;
   }
+}
+
+message ChannelStates{
+  repeated perunwire.State states = 1;
 }
 
 message ChannelOpenRequest {
