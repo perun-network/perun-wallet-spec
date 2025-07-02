@@ -27,7 +27,7 @@ message Envelope {
   bytes sender = 1;
   // intended recipient of the message.
   bytes recipient = 2;
-  // msg should contain on the valid message types.
+  // msg should contain on the valid messaSge types.
   oneof msg {
     PingMsg ping_msg = 3;
     PongMsg pong_msg = 4;
