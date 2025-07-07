@@ -21,7 +21,8 @@ service ChannelService {
   rpc RestoreChannels(RestoreChannelsRequest) returns (RestoreChannelsResponse);
 
   rpc ClosePerunClient(ClosePerunClientRequest) returns (ClosePerunClientResponse);
-
+  
+  //For testing purposes
   rpc NewPerunClient(NewPerunClientRequest) returns (NewPerunClientResponse);
 }
 
@@ -57,15 +58,19 @@ message Rejected {
 }
 
 message GetChannelsRequest {
-  // The channel id of the channel to be closed.
+  //L1 address of requester (serialized offchain participant)
   bytes requester = 1;
 }
 
 message GetChannelsResponse {
   oneof msg {
     Rejected rejected = 1;
-    perunwire.State state = 2;
+    ChannelStates states = 2;
   }
+}
+
+message ChannelStates{
+  repeated perunwire.State states = 1;
 }
 
 message ChannelOpenRequest {
