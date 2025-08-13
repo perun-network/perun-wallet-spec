@@ -84,6 +84,8 @@ message ChannelOpenRequest {
   perunwire.Allocation allocation = 3;
   // The duration of the challenge period.
   uint64 challenge_duration = 4;
+  // Temporary channel ID to be used for the channel opening.
+  bytes tempChannelID = 5;
 }
 
 message ChannelOpenResponse {
@@ -210,6 +212,8 @@ message SignMessageRequest {
   bytes pubkey = 1;
   // The message to be signed.
   bytes data = 2;
+  //temporary channel ID to identify the peer
+  bytes tempChannelID = 3;
 }
 
 message SignMessageResponse {
